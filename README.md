@@ -1,6 +1,4 @@
-# macOS Dock Management Script for Jamf Pro
-
-Enterprise-grade macOS Dock management script for Jamf Pro environments.
+# Dock Setup Script for Jamf Pro
 
 ## Overview
 
@@ -30,7 +28,7 @@ This script clears the macOS Dock and adds specified applications using bundle i
 
 **Current Version:** 6.4-PRODUCTION  
 **Last Updated:** January 22, 2026  
-**Author:** Ellie Romero (ellie.romero@jamf.com)
+**Author:** Ellie Romero (ellie@theecr.com)
 
 ## Quick Start
 
