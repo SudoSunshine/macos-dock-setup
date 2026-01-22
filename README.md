@@ -326,7 +326,7 @@ Tested on production Jamf-managed Mac (SassyAIR):
 ## Support
 
 **Author:** Ellie Romero  
-**Email:** ellie.romero@jamf.com  
+**Email:** ellie@theecr.com 
 **Organization:** Jamf  
 
 For questions, issues, or feature requests, please contact the author or open an issue in this repository.
