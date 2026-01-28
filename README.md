@@ -1,6 +1,8 @@
 # macOS Dock Management Script
 
-A bash script that clears and rebuilds the macOS Dock with specified applications using bundle identifiers via Jamf Pro.
+Clears and rebuilds the macOS Dock with specified applications using bundle identifiers via Jamf Pro.
+
+![Shell](https://img.shields.io/badge/shell-bash-yellow.svg)
 
 ## What It Does
 
