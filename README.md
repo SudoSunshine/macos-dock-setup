@@ -1,6 +1,6 @@
 # macOS Dock Management Script
 
-Manages macOS Dock configuration for Jamf Pro environments. Clears the Dock and adds applications using bundle identifiers.
+A bash script that clears and rebuilds the macOS Dock with specified applications using bundle identifiers via Jamf Pro.
 
 ## What It Does
 
