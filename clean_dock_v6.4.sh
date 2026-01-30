@@ -1,43 +1,30 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2329
 #
 # Dock App Management for Jamf Pro
 # Version: 6.4-PRODUCTION
 # Last Updated: January 22, 2026
 #
 # Author: Ellie Romero
-# Email: ellie.romero@jamf.com
+# Email: ellie@theecr.com
 #
 # Description:
-#   Enterprise-grade macOS Dock management script for Jamf Pro environments.
-#   Clears the Dock and adds specified applications using bundle identifiers.
+#   Manages macOS Dock configuration for Jamf Pro. Clears the Dock and adds
+#   applications using bundle identifiers passed via script parameters.
 #   
-#   Capabilities:
-#     • Adds up to 8 apps via Jamf Pro parameters 4-11 (GUI limit)
-#     • Preserves Dock folders, settings, and user preferences
-#     • Automatically detects and resolves app symlinks (no alias arrows)
-#     • Normalizes paths for clean, professional Dock entries
-#     • Falls back from Self Service+ to classic Self Service automatically
-#     • Works on fresh Mac enrollments without Command Line Developer Tools
-#     • Zero external dependencies (pure bash using native macOS commands)
-#   
-#   Use Cases:
-#     • Standardize Dock across departments or roles
-#     • New Mac onboarding and setup automation
-#     • User migration or computer refresh workflows
-#     • Self-Service Dock reset policies
+#   What it does:
+#     • Clears existing apps from Dock (preserves folders and settings)
+#     • Adds up to 8 apps via Jamf Pro GUI (parameters 4-11)
+#     • Resolves app symlinks automatically (no alias arrows in Dock)
+#     • Falls back from Self Service+ to classic Self Service when needed
+#     • Works on fresh Macs without Command Line Developer Tools
 #
 # Features:
-#   - Pure bash implementation (no Python, Perl, or external tools)
-#   - Works on fresh Mac enrollments without Command Line Tools
-#   - Automatic Self Service+ to classic Self Service fallback
-#   - Symlink detection and resolution (prevents alias arrows)
-#   - Path normalization (removes .. components for clean paths)
-#   - Double-fallback app discovery (mdfind + find)
-#   - Comprehensive error handling and logging
-#   - Lock file protection (prevents concurrent execution)
-#   - Timeout protection on all operations
-#   - ShellCheck compliant code
+#   - Pure bash (no external dependencies)
+#   - Symlink resolution for clean icons
+#   - Path normalization
+#   - Lock file protection
+#   - Timeout protection
+#   - Error handling and logging
 #
 set -euo pipefail
 
@@ -71,51 +58,91 @@ set -euo pipefail
 #
 # Notes:
 #       - Parameters 1-3 are reserved by Jamf Pro (target drive, computer name, username)
-#       - Parameters 4-11 give you 8 app slots (recommended for most deployments)
+#       - Parameters 4-11 give you 8 app slots (Jamf Pro GUI default)
 #       - Finder is automatically added by macOS as the first Dock item
 #       - Leave unused parameters empty
 #
-# ADVANCED: Extending Beyond 8 Apps
-#       The Jamf Pro GUI limits parameters to 11, providing 8 app slots (params 4-11).
-#       Most users find 8 apps sufficient, but power users can extend this limit.
+# ADVANCED: Adding More Than 8 Apps
 #
-#       STEP-BY-STEP INSTRUCTIONS TO EXTEND:
-#       
-#       Step 1: Increase Parameter Limit
-#         • Locate: Line ~452 (search for: "if (( last > 11 )); then")
-#         • Change: "last=11" to your desired limit
-#         • Example: "last=20" allows 17 apps (parameters 4-20)
-#       
-#       Step 2: Update Warning Message
-#         • Locate: Line ~512 (search for: "Only parameters 4-11 processed")
-#         • Change: "4-11" to match your new limit
-#         • Example: "Only parameters 4-20 processed; extras ignored"
-#       
-#       Step 3: Pass Additional Parameters
-#         • Option A: Use Jamf Pro API to add parameters beyond 11
-#         • Option B: Call script directly via policy with extra arguments
-#         • Option C: Create custom policy with extended parameter support
-#       
-#       WARNING: More than 10-12 apps can clutter the Dock and impact UX.
-#       Consider using multiple policies for different user roles instead.
+#   Choose ONE method below (either Method 1 OR Method 2, not both):
+#
+#   Method 1 - Increase Parameter Limit (Use Jamf Pro Parameters)
+#     • Best for: Different app sets per policy
+#     • Supports: Unlimited apps via parameters
+#     • Steps:
+#       1. Find line ~439: "if (( last > 11 )); then"
+#       2. Change "last=11" to "last=20" (or any number you want)
+#       3. Find line ~499: "Only parameters 4-11 processed"
+#       4. Update "4-11" to match (e.g., "4-20")
+#       5. Pass extra parameters via Jamf Pro API or direct script call
+#
+#   Method 2 - Hardcode Apps (Edit Script Directly)
+#     • Best for: Same app set for all Macs
+#     • Supports: Unlimited apps
+#     • NOTE: When enabled, this IGNORES Jamf parameters 4-11
+#     • Steps:
+#       1. Find line ~112: "# HARDCODED_APPS=("
+#       2. Uncomment the HARDCODED_APPS array
+#       3. Add your bundle IDs to the list
+#     Example:
+#       HARDCODED_APPS=(
+#         "com.jamf.selfserviceplus"
+#         "com.apple.Safari"
+#         "com.apple.Terminal"
+#         "com.microsoft.Outlook"
+#         "com.tinyspeck.slackmacgap"
+#         "com.microsoft.teams2"
+#         # Add as many as you want!
+#       )
 #
 ################################################################################
 
 ################################################################################
-# SCRIPT CONFIGURATION
+# USER CONFIGURATION - Customize these settings as needed
+################################################################################
+
+# OPTION 1: Hardcoded Apps (Either/Or with Jamf Parameters)
+#
+# Uncomment and add bundle IDs here to bypass Jamf parameters completely.
+# This is the easiest way to add more than 8 apps.
+#
+# When to use: When all Macs should have the same Dock configuration
+# Default: Commented out (uses Jamf Pro parameters 4-11)
+#
+# HARDCODED_APPS=(
+#     "com.jamf.selfserviceplus"
+#     "com.apple.Safari"
+#     "com.apple.Terminal"
+#     "com.microsoft.Outlook"
+#     "com.tinyspeck.slackmacgap"
+#     # Add as many as you want!
+# )
+#
+# NOTE: If HARDCODED_APPS is set, script parameters 4-11 will be ignored.
+
+# OPTION 2: Timeout Settings
+#
+# How long to wait for operations before giving up (in seconds)
+# When to customize: If you have slower Macs or slower network/storage
+# Default: 30 seconds for commands, 10 seconds for Dock restart
+#
+TIMEOUT_DEFAULT=30    # Maximum time for app search and user commands
+TIMEOUT_SHORT=10      # Maximum time for Dock restart
+
+################################################################################
+# INTERNAL CONFIGURATION - Do not modify unless you know what you're doing
 ################################################################################
 
 readonly LOGTAG="clean_dock"
 readonly SCRIPT_VERSION="6.4-production"
 readonly LOCKFILE_DIR="/tmp"
-readonly TIMEOUT_DEFAULT=30
-readonly TIMEOUT_SHORT=10
 
-# Validation patterns
+# Validation patterns (security-related, do not modify)
 readonly USERNAME_REGEX='^[a-zA-Z0-9_.-]+$'
 readonly BUNDLE_ID_REGEX='^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$'
 # shellcheck disable=SC2016
 readonly DANGEROUS_CHARS_REGEX='[;$()` |\]'
+################################################################################
 
 ################################################################################
 # 1. LOGGING FUNCTIONS
@@ -193,6 +220,7 @@ acquire_lock() {
 }
 
 # 3.2 Release lock
+# shellcheck disable=SC2329  # Called via trap statement
 release_lock() {
     local lockfile="$1"
     rm -rf "$lockfile" 2>/dev/null || true
@@ -479,72 +507,126 @@ trap 'release_lock "$LOCKFILE"' EXIT
 # 9.3 Clear the Dock
 clear_dock
 
-# 9.4 Process bundle IDs from parameters 4-11 and add apps to Dock
-log "Processing bundle IDs from parameters 4-11..."
-
-last=$#
-if (( last > 11 )); then
-    last=11
-fi
-
+# 9.4 Process bundle IDs and add apps to Dock
 app_count=0
 
-for (( i=4; i<=last; i++ )); do
-    bid="${!i:-}"
+# Check if using hardcoded apps
+if [[ -n "${HARDCODED_APPS+x}" && ${#HARDCODED_APPS[@]} -gt 0 ]]; then
+    log "Processing hardcoded apps (${#HARDCODED_APPS[@]} apps)..."
     
-    [[ -z "$bid" ]] && continue
-    
-    if ! validate_bundle_id "$bid"; then
-        warn "Skipping invalid bundle ID at parameter $i: $bid"
-        continue
-    fi
-    
-    log "Processing parameter $i: $bid"
-    
-    if path=$(find_app "$bid"); then
-        log "Found: $path"
+    for bid in "${HARDCODED_APPS[@]}"; do
+        [[ -z "$bid" ]] && continue
         
-        if [[ ! -e "$path" ]]; then
-            warn "Path no longer exists: $path"
+        if ! validate_bundle_id "$bid"; then
+            warn "Skipping invalid bundle ID: $bid"
             continue
         fi
         
-        if add_to_dock "$path"; then
-            ((app_count++))
-        fi
-    else
-        # App not found - check for automatic fallback options
-        fallback_bid=""
+        log "Processing: $bid"
         
-        # Self Service+ fallback to classic Self Service
-        if [[ "$bid" == "com.jamf.selfserviceplus" ]]; then
-            log "Self Service+ (com.jamf.selfserviceplus) not found"
-            log "Attempting fallback to classic Self Service (com.jamfsoftware.selfservice.mac)..."
-            fallback_bid="com.jamfsoftware.selfservice.mac"
-        fi
-        
-        # Try fallback bundle ID if available
-        if [[ -n "$fallback_bid" ]]; then
-            if path=$(find_app "$fallback_bid"); then
-                log "Found fallback: $path"
-                
-                if [[ -e "$path" ]]; then
+        if path=$(find_app "$bid"); then
+            log "Found: $path"
+            
+            if [[ ! -e "$path" ]]; then
+                warn "Path no longer exists: $path"
+                continue
+            fi
+            
+            if add_to_dock "$path"; then
+                ((app_count++))
+            fi
+        else
+            # App not found - check for automatic fallback options
+            fallback_bid=""
+            
+            # Self Service+ fallback to classic Self Service
+            if [[ "$bid" == "com.jamf.selfserviceplus" ]]; then
+                log "Self Service+ not found"
+                log "Attempting fallback to classic Self Service (com.jamfsoftware.selfservice.mac)..."
+                fallback_bid="com.jamfsoftware.selfservice.mac"
+            fi
+            
+            if [[ -n "$fallback_bid" ]]; then
+                if path=$(find_app "$fallback_bid"); then
+                    log "Found fallback: $path"
                     if add_to_dock "$path"; then
                         log "Successfully added fallback app to Dock"
                         ((app_count++))
                     fi
+                else
+                    warn "Bundle ID not found: $bid (and fallback $fallback_bid also not found)"
                 fi
             else
-                warn "Bundle ID not found: $bid (and fallback $fallback_bid also not found)"
+                warn "Bundle ID not found: $bid - App may not be installed or bundle ID is incorrect"
+            fi
+        fi
+    done
+else
+    # Use Jamf parameters (default behavior)
+    log "Processing bundle IDs from parameters 4-11..."
+    
+    last=$#
+    if (( last > 11 )); then
+        last=11
+    fi
+    
+    for (( i=4; i<=last; i++ )); do
+        bid="${!i:-}"
+        
+        [[ -z "$bid" ]] && continue
+        
+        if ! validate_bundle_id "$bid"; then
+            warn "Skipping invalid bundle ID at parameter $i: $bid"
+            continue
+        fi
+        
+        log "Processing parameter $i: $bid"
+        
+        if path=$(find_app "$bid"); then
+            log "Found: $path"
+            
+            if [[ ! -e "$path" ]]; then
+                warn "Path no longer exists: $path"
+                continue
+            fi
+        
+            if add_to_dock "$path"; then
+                ((app_count++))
             fi
         else
-            warn "Bundle ID not found: $bid - App may not be installed or bundle ID is incorrect"
+            # App not found - check for automatic fallback options
+            fallback_bid=""
+            
+            # Self Service+ fallback to classic Self Service
+            if [[ "$bid" == "com.jamf.selfserviceplus" ]]; then
+                log "Self Service+ (com.jamf.selfserviceplus) not found"
+                log "Attempting fallback to classic Self Service (com.jamfsoftware.selfservice.mac)..."
+                fallback_bid="com.jamfsoftware.selfservice.mac"
+            fi
+            
+            # Try fallback bundle ID if available
+            if [[ -n "$fallback_bid" ]]; then
+                if path=$(find_app "$fallback_bid"); then
+                    log "Found fallback: $path"
+                    
+                    if [[ -e "$path" ]]; then
+                        if add_to_dock "$path"; then
+                            log "Successfully added fallback app to Dock"
+                            ((app_count++))
+                        fi
+                    fi
+                else
+                    warn "Bundle ID not found: $bid (and fallback $fallback_bid also not found)"
+                fi
+            else
+                warn "Bundle ID not found: $bid - App may not be installed or bundle ID is incorrect"
+            fi
         fi
+    done
+    
+    if (( $# > 11 )); then
+        warn "Only parameters 4-11 processed; extras ignored (Jamf GUI limit)"
     fi
-done
-
-if (( $# > 11 )); then
-    warn "Only parameters 4-11 processed; extras ignored (Jamf GUI limit)"
 fi
 
 log "Successfully added $app_count apps to Dock"
