@@ -1,12 +1,15 @@
 # macOS Dock Management Script
 
-Clears and rebuilds the macOS Dock with specified applications using bundle identifiers via Jamf Pro.
-
 ![Shell](https://img.shields.io/badge/shell-bash-yellow.svg)
+![macOS](https://img.shields.io/badge/macOS-10.15+-blue.svg)
+![Jamf Pro](https://img.shields.io/badge/Jamf%20Pro-required-orange.svg)
+![Version](https://img.shields.io/badge/version-6.4--PRODUCTION-green.svg)
+
+A bash script for Jamf Pro deployments that clears and rebuilds the macOS Dock with applications specified by bundle identifiers.
 
 ## What It Does
 
-This script standardizes Dock layouts across Mac fleets by clearing existing apps and adding specified applications. It preserves Dock folders and user settings while replacing the app lineup.
+Standardizes Dock layouts across your Mac fleet by clearing existing apps and adding specified applications. Preserves Dock folders and user settings.
 
 ## Features
 
@@ -23,12 +26,10 @@ This script standardizes Dock layouts across Mac fleets by clearing existing app
 
 1. Upload script to Jamf Pro (Settings → Scripts)
 2. Create a policy and add the script
-3. Configure parameters 4-11 with bundle IDs (see examples below)
+3. Configure parameters 4-11 with bundle IDs
 4. Scope the policy to target computers
 
 ### Parameter Examples
-
-Configure these in your Jamf Pro policy:
 
 ```
 Parameter 4: com.jamf.selfserviceplus
@@ -47,7 +48,7 @@ All user-configurable options are in the script's **USER CONFIGURATION** section
 
 ### Default Setup
 
-By default, the script uses Jamf Pro parameters 4-11 for up to 8 apps. This is perfect for most deployments and allows different apps per policy.
+Uses Jamf Pro parameters 4-11 for up to 8 apps. Allows different apps per policy.
 
 ### Option 1: Hardcode Apps in Script
 
@@ -93,7 +94,7 @@ TIMEOUT_DEFAULT=30    # Maximum time for app search and user commands
 TIMEOUT_SHORT=10      # Maximum time for Dock restart
 ```
 
-Increase these values if you see timeout errors in your policy logs. Default values work for most environments.
+Increase these values if you see timeout errors in your policy logs.
 
 ## Requirements
 
